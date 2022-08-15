@@ -5,16 +5,9 @@
 #include <Adafruit_LC709203F.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <MQTT.h>
 
-#define SSID "xxx"
-#define WIFI_PASSWORD "xxx"
-#define TARGET_HOSTNAME "xxx"
-#define TARGET_PORT 9999
-#define uS_TO_S_FACTOR 1000000ULL  /* Conversion factor for micro seconds to seconds */
-//#define TIME_TO_SLEEP  600         /* Time ESP32 will go to sleep (in seconds) - 10 minutes */
-#define TIME_TO_SLEEP  10         /* Time ESP32 will go to sleep (in seconds) - 10 seconds */
-#define MQTT_TOPIC "/home/office"
-//#define IS_BATTERY_POWERED /* Used to determine if battery stats should be published */
+#include "defs.h"
 
 void deepSleepNow(){
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
@@ -56,16 +49,19 @@ void setup() {
   }
 
   WiFiClient client;
-  client.connect(TARGET_HOSTNAME, TARGET_PORT);
   char buf[256];
   serializeJson(doc, buf);
 
-  client.write(buf);
-  client.write("\n");
-  client.flush();
   // post to mqtt
-  // flush if needed
+  MQTTClient mqttClient;
+  mqttClient.begin(MQTT_BROKER_HOSTNAME, MQTT_BROKER_PORT, client);
+  mqttClient.connect(MQTT_BOKER_CLIENT_ID, MQTT_BROKER_USERNAME, MQTT_BROKER_PASSWORD);
+  mqttClient.publish(MQTT_TOPIC, buf);
+  mqttClient.disconnect();
 
+  // flush if needed
+  client.flush();
+  
   // deep sleep
   deepSleepNow();
 }
